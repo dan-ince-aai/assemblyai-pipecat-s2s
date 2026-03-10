@@ -1,0 +1,10 @@
+[project]
+name = "assemblyai-pipecat-s2s"
+version = "0.1.0"
+description = "AssemblyAI Speech-to-Speech voice agent built with Pipecat"
+requires-python = ">=3.10"
+dependencies = [
+    "pipecat-ai[daily,webrtc,runner]",
+    "websockets>=13",
+    "python-dotenv",
+]
