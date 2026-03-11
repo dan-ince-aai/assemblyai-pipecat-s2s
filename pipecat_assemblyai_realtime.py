@@ -8,7 +8,6 @@ Protocol summary (→ = client sends, ← = server sends):
   → input.audio           { audio: <base64 PCM> }
   → session.update        { session: { system_prompt, tools, ... } }
   → response.create       (trigger a response manually)
-  → reply.cancel          { reply_id }
   → tool.result           { call_id, result }
   ← session.ready
   ← input.speech.started / input.speech.stopped
@@ -155,6 +154,8 @@ class AssemblyAIRealtimeLLMService(LLMService):
         if self._websocket:
             try:
                 await self._websocket.send(json.dumps(msg))
+            except websockets.exceptions.ConnectionClosedOK:
+                pass  # normal disconnect — pipeline flushing after client left
             except Exception as e:
                 logger.error(f"WebSocket send error: {e}")
                 await self.push_frame(ErrorFrame(str(e)))
@@ -259,12 +260,6 @@ class AssemblyAIRealtimeLLMService(LLMService):
     async def _on_speech_started(self) -> None:
         self._user_transcript_buf = ""  # reset accumulator for new utterance
         await self.push_frame(UserStartedSpeakingFrame(), FrameDirection.UPSTREAM)
-        # Interrupt the bot if it was speaking
-        if self._bot_speaking and self._current_response_id:
-            await self._send({
-                "type": "reply.cancel",
-                "reply_id": self._current_response_id,
-            })
 
     async def _on_speech_stopped(self) -> None:
         await self.push_frame(UserStoppedSpeakingFrame(), FrameDirection.UPSTREAM)
